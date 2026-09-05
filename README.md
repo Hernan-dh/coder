@@ -43,8 +43,10 @@ To kickstart your crew of AI agents and begin task execution, run this from the 
 $ crewai run
 ```
 
-This command presents ten coding-project options plus a custom-assignment path,
-then initializes the coder Crew and passes your selection to `{assignment}`.
+This command presents five curated coding-project options. Choose `0` to enter
+your own request. If a prior sandbox session exists, choose `6` to let the
+agent inspect and continue its existing files. If execution fails, the same
+process offers to resume immediately and passes the error back to the agent.
 Generated code is written under `sandbox/` and executed in an ephemeral,
 network-disabled Docker container with CPU, memory, process, and time limits.
 

@@ -19,6 +19,11 @@ load_dotenv()
 OPENAI_INCOMPATIBLE_MESSAGE_FIELDS = {"raw_tool_call_parts"}
 
 
+def is_empty_response(result: Any) -> bool:
+    """Return whether CrewAI would reject a provider result as empty."""
+    return result is None or (isinstance(result, str) and not result.strip())
+
+
 def openai_compatible_messages(
     messages: str | list[LLMMessage],
 ) -> str | list[LLMMessage]:
@@ -75,6 +80,8 @@ class FallbackLLM(BaseLLM):
                     from_agent=from_agent,
                     response_model=response_model,
                 )
+                if is_empty_response(result):
+                    raise ValueError("Provider returned an empty response")
             except (KeyboardInterrupt, SystemExit):
                 raise
             except Exception as error:

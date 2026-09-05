@@ -1,16 +1,19 @@
 import os
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
-from coder.main import CODING_OPTIONS, prompt_assignment
+from crewai.llms.base_llm import BaseLLM
+
+from coder.main import CODING_OPTIONS, _run_session, prompt_assignment
 from coder.model_config import MODEL_FALLBACKS
-from coder.model_provider import fallback_llm, openai_compatible_messages
+from coder.model_provider import FallbackLLM, fallback_llm, openai_compatible_messages
 from coder.tools.sandbox_tools import (
     list_sandbox_files,
     read_sandbox_file,
     run_sandbox_python,
     write_sandbox_file,
 )
+from coder.session import CodingSession, continuation_instructions
 
 
 class ModelProviderTests(unittest.TestCase):
@@ -47,19 +50,85 @@ class ModelProviderTests(unittest.TestCase):
         self.assertNotIn("raw_tool_call_parts", cleaned[0])
         self.assertEqual(cleaned[0]["tool_calls"], [{"id": "call-1"}])
 
+    def test_empty_response_advances_to_next_provider(self):
+        first = MagicMock(spec=BaseLLM)
+        second = MagicMock(spec=BaseLLM)
+        first.call.return_value = "   "
+        second.call.return_value = "usable response"
+        llm = FallbackLLM(
+            model="test-fallback",
+            attempts=[
+                (MODEL_FALLBACKS[0], first),
+                (MODEL_FALLBACKS[1], second),
+            ],
+        )
+
+        result = llm.call("continue")
+
+        self.assertEqual(result, "usable response")
+        self.assertEqual(llm.active_index, 1)
+        first.call.assert_called_once()
+        second.call.assert_called_once()
+
+    def test_all_empty_responses_report_fallback_failure(self):
+        provider = MagicMock(spec=BaseLLM)
+        provider.call.return_value = None
+        llm = FallbackLLM(
+            model="test-fallback",
+            attempts=[(MODEL_FALLBACKS[0], provider)],
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "All configured models failed"):
+            llm.call("continue")
+
 
 class AssignmentPromptTests(unittest.TestCase):
+    def test_offers_exactly_five_curated_assignments(self):
+        self.assertEqual(len(CODING_OPTIONS), 5)
+
     @patch("builtins.input", return_value="4")
     def test_uses_numbered_assignment(self, _input):
-        self.assertEqual(prompt_assignment(), CODING_OPTIONS[3])
+        self.assertEqual(prompt_assignment(can_resume=False).assignment, CODING_OPTIONS[3])
 
-    @patch("builtins.input", side_effect=["c", "Create a command-line calculator"])
+    @patch("builtins.input", side_effect=["0", "Create a command-line calculator"])
     def test_accepts_custom_assignment(self, _input):
-        self.assertEqual(prompt_assignment(), "Create a command-line calculator")
+        self.assertEqual(
+            prompt_assignment(can_resume=False).assignment,
+            "Create a command-line calculator",
+        )
 
-    @patch("builtins.input", side_effect=["11", "0", "2"])
+    @patch("builtins.input", side_effect=["11", "c", "2"])
     def test_reprompts_after_invalid_number(self, _input):
-        self.assertEqual(prompt_assignment(), CODING_OPTIONS[1])
+        self.assertEqual(prompt_assignment(can_resume=False).assignment, CODING_OPTIONS[1])
+
+    @patch("coder.main.load_session", return_value=CodingSession("Previous program", "failure"))
+    @patch("builtins.input", return_value="6")
+    def test_resumes_previous_assignment(self, _input, _load):
+        session = prompt_assignment(can_resume=True)
+        self.assertEqual(session.assignment, "Previous program")
+        self.assertEqual(session.last_error, "failure")
+        self.assertTrue(session.resume_requested)
+
+    def test_continuation_includes_previous_failure(self):
+        instructions = continuation_instructions(CodingSession("Program", "two tests failed"))
+        self.assertIn("existing file", instructions)
+        self.assertIn("two tests failed", instructions)
+
+    @patch("coder.main.save_session")
+    @patch("coder.main.fallback_llm", return_value=object())
+    @patch("coder.main.Coder")
+    @patch("builtins.input", return_value="y")
+    def test_failure_can_resume_without_restarting(self, _input, coder, _llm, save):
+        kickoff = coder.return_value.crew.return_value.kickoff
+        kickoff.side_effect = [ValueError("tests failed"), None]
+        session = CodingSession("Build it")
+
+        _run_session(session, resume=False)
+
+        self.assertEqual(kickoff.call_count, 2)
+        second_inputs = kickoff.call_args_list[1].kwargs["inputs"]
+        self.assertIn("tests failed", second_inputs["assignment"])
+        self.assertGreaterEqual(save.call_count, 3)
 
 
 class SandboxToolTests(unittest.TestCase):

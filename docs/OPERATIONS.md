@@ -7,13 +7,15 @@
 3. Copy `.env.example` to `.env` and set local credentials.
 4. Run `uv run crewai run`.
 
-The command presents ten numbered, standard-library coding projects. Enter a
-number from 1 to 10, or enter `C` to provide a custom assignment. Invalid and
+The command presents exactly five curated coding projects. Enter `1` through
+`5`, or enter `0` to provide a custom assignment. If generated files and saved
+session metadata exist, option `6` resumes the previous program. Invalid and
 empty custom selections are rejected before the crew starts.
 
 Configure at least one of `GEMINI_API_KEY`, `GROQ_API_KEY`, or
 `OPENROUTER_API_KEY`. Runtime model order is defined in
 `src/coder/model_config.py`; free tiers remain subject to provider quotas.
+Empty model responses automatically advance to the next configured provider.
 Gemini is accessed through CrewAI's native Google Gen AI integration because
 Gemini 3 tool calls require thought signatures to be retained across turns.
 CLI output is forced to UTF-8 on Windows so CrewAI status symbols do not trigger
@@ -37,6 +39,11 @@ uv run python -m unittest discover -s tests
 
 If a run fails, confirm `docker version` shows both Client and Server. Sandbox
 programs cannot download packages or contact external services by design.
+The CLI also displays the failure and asks whether the coding agent should
+resume immediately. Answer `y` to keep the sandbox, pass the error back to a
+fresh CrewAI execution, and have the agent inspect and repair its program.
+Answering no preserves the files and session metadata for option `6` on the
+next invocation.
 
 ## Verification
 
@@ -60,5 +67,7 @@ Provide `--title` and `--description` to avoid external metadata generation. Com
 ## Recovery
 
 - If verification fails, fix every reported item and rerun it.
+- If a coding run fails, answer `y` at the recovery prompt or restart the CLI
+  and select `6`; neither path recreates the program from scratch.
 - If metadata generation fails, inspect the provider attempt names, verify local keys and quotas, or provide commit metadata manually.
 - Never recover with a force-push.

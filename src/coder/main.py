@@ -6,6 +6,14 @@ from datetime import datetime
 
 from coder.crew import Coder
 from coder.model_provider import fallback_llm
+from coder.session import (
+    CodingSession,
+    continuation_instructions,
+    has_resumable_session,
+    load_session,
+    reset_sandbox,
+    save_session,
+)
 
 warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
 
@@ -19,54 +27,81 @@ if hasattr(sys.stdout, "reconfigure"):
 # interpolate any tasks and agents information
 
 CODING_OPTIONS = (
-    "Create a command-line calculator with input validation and unit tests.",
-    "Create a JSON-backed command-line to-do list with add, list, complete, and delete commands.",
-    "Create a CSV analyzer that reports row counts, missing values, and numeric-column statistics.",
-    "Create a personal expense tracker that stores entries in JSON and summarizes spending by category.",
-    "Create a duplicate-file finder that compares file sizes and SHA-256 hashes without deleting files.",
-    "Create a log-file analyzer that counts severity levels and reports the most frequent errors.",
-    "Create a secure password generator using Python's secrets module and configurable character rules.",
-    "Create a Markdown-to-HTML converter using only the Python standard library.",
-    "Create a small JSON REST API using Python's standard-library HTTP server.",
-    "Create a file-organizer preview tool that proposes moves by extension without modifying files.",
+    "Create a personal-finance CLI with budgets, recurring transactions, CSV import, and useful reports.",
+    "Create a local Kanban project manager with JSON persistence, priorities, deadlines, and search.",
+    "Create a log-analysis tool that detects recurring errors and produces a standalone HTML dashboard.",
+    "Create an inventory and sales REST API with persistence, validation, reports, and automated tests.",
+    "Create a duplicate-media organizer that hashes files and previews safe cleanup plans without deleting anything.",
 )
 
 
-def prompt_assignment() -> str:
-    """Offer ten coding projects or accept a custom assignment."""
+def prompt_assignment(can_resume: bool | None = None) -> CodingSession:
+    """Offer five curated projects, a custom assignment, and optional resume."""
+    if can_resume is None:
+        can_resume = has_resumable_session()
+
     print("\nChoose a coding project:")
+    print("0. Describe your own program")
     for index, assignment in enumerate(CODING_OPTIONS, start=1):
         print(f"{index}. {assignment}")
-    print("C. Write a custom assignment")
+    if can_resume:
+        print("6. Resume the previous program")
 
     while True:
-        choice = input("\nChoose 1-10 or C: ").strip()
-        if choice.lower() == "c":
+        available = "0-6" if can_resume else "0-5"
+        choice = input(f"\nChoose {available}: ").strip()
+        if choice == "0":
             custom = input("Describe the coding task:\n> ").strip()
             if custom:
-                return custom
+                return CodingSession(custom)
             print("The custom assignment cannot be empty.")
             continue
         try:
             option = int(choice)
         except ValueError:
-            option = 0
+            option = -1
         if 1 <= option <= len(CODING_OPTIONS):
-            return CODING_OPTIONS[option - 1]
-        print("Invalid choice. Enter a number from 1 to 10, or C.")
+            return CodingSession(CODING_OPTIONS[option - 1])
+        if option == 6 and can_resume:
+            session = load_session()
+            if session is not None:
+                session.resume_requested = True
+                return session
+        print(f"Invalid choice. Enter a number from {available}.")
+
+
+def _run_session(session: CodingSession, *, resume: bool) -> None:
+    """Run or repeatedly resume a session without discarding generated files."""
+    while True:
+        save_session(session)
+        run_assignment = session.assignment
+        if resume:
+            run_assignment = f"{run_assignment}\n\n{continuation_instructions(session)}"
+        inputs = {"assignment": run_assignment}
+        try:
+            Coder(llm=fallback_llm()).crew().kickoff(inputs=inputs)
+            session.last_error = ""
+            save_session(session)
+            return
+        except Exception as error:
+            session.last_error = f"{type(error).__name__}: {error}"
+            save_session(session)
+            print(f"\nCoder stopped with an error: {session.last_error}")
+            answer = input("Resume the previous program from its existing files? [y/N]: ").strip().lower()
+            if answer not in {"y", "yes"}:
+                raise RuntimeError(f"Coder stopped: {error}") from error
+            resume = True
 
 def run():
     """
     Run the crew.
     """
-    inputs = {
-        'assignment': prompt_assignment()
-    }
-
-    try:
-        Coder(llm=fallback_llm()).crew().kickoff(inputs=inputs)
-    except Exception as e:
-        raise Exception(f"An error occurred while running the crew: {e}")
+    resumable_before_selection = has_resumable_session()
+    session = prompt_assignment(resumable_before_selection)
+    resume = session.resume_requested
+    if not resume:
+        reset_sandbox()
+    _run_session(session, resume=resume)
 
 
 def train():
