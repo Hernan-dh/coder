@@ -7,9 +7,17 @@
 3. Copy `.env.example` to `.env` and set local credentials.
 4. Run `uv run crewai run`.
 
+The command presents ten numbered, standard-library coding projects. Enter a
+number from 1 to 10, or enter `C` to provide a custom assignment. Invalid and
+empty custom selections are rejected before the crew starts.
+
 Configure at least one of `GEMINI_API_KEY`, `GROQ_API_KEY`, or
 `OPENROUTER_API_KEY`. Runtime model order is defined in
 `src/coder/model_config.py`; free tiers remain subject to provider quotas.
+Gemini is accessed through CrewAI's native Google Gen AI integration because
+Gemini 3 tool calls require thought signatures to be retained across turns.
+CLI output is forced to UTF-8 on Windows so CrewAI status symbols do not trigger
+`charmap` encoding errors.
 
 Generated files in `output/` and `sandbox*/` are local artifacts and are excluded from publication.
 

@@ -25,9 +25,12 @@
 ## Model routing
 
 The coding agent receives one `FallbackLLM` instance. Each failed call advances
-through configured providers without restarting completed CrewAI work: Gemini
-Flash, Groq GPT-OSS, then coding-oriented and general agentic free OpenRouter
-models. Providers without a configured key are omitted at startup.
+through configured providers without restarting completed CrewAI work. Gemini
+uses CrewAI's native Google Gen AI provider so tool-call thought signatures are
+preserved; Groq and OpenRouter use their OpenAI-compatible endpoints. Providers
+without a configured key are omitted at startup. When execution changes from
+Gemini to an OpenAI-compatible provider mid-task, Gemini-only message metadata
+is removed while standard tool-call data is retained.
 
 ## Related decisions
 

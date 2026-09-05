@@ -49,6 +49,18 @@ class Verification:
             self.error(f"{label} failed with exit code {result.returncode}")
 
 
+def project_python() -> str:
+    """Prefer the repository virtual environment for dependency-backed checks."""
+    candidates = (
+        ROOT / ".venv" / "Scripts" / "python.exe",
+        ROOT / ".venv" / "bin" / "python",
+    )
+    for candidate in candidates:
+        if candidate.is_file():
+            return str(candidate)
+    return sys.executable
+
+
 def repository_files(verification: Verification) -> list[Path]:
     result = subprocess.run(
         ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z"],
@@ -81,7 +93,8 @@ def check_existing_tests(verification: Verification, files: list[Path]) -> None:
     if not dependency_file.is_file():
         dependency_file = ROOT / "pyproject.toml"
     dependencies = dependency_file.read_text(encoding="utf-8").lower()
-    command = [sys.executable, "-m", "pytest"] if "pytest" in dependencies else [sys.executable, "-m", "unittest", "discover"]
+    python = project_python()
+    command = [python, "-m", "pytest"] if "pytest" in dependencies else [python, "-m", "unittest", "discover"]
     test_environment = os.environ.copy()
     source_path = str(ROOT / "src")
     existing_path = test_environment.get("PYTHONPATH", "")

@@ -26,7 +26,10 @@ class Coder:
             config=self.agents_config['coder'],  # type: ignore[index]
             llm=self.llm,
             verbose=True,
-            tools=sandbox_tools
+            tools=sandbox_tools,
+            # FallbackLLM already tries every provider for each failed call.
+            # Retrying the whole task would repeat the chain and waste free quota.
+            max_retry_limit=0,
         )
 
 

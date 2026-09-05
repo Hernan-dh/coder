@@ -6,6 +6,7 @@ import os
 from typing import Any
 
 from crewai.llms.base_llm import BaseLLM
+from crewai.llms.providers.gemini.completion import GeminiCompletion
 from crewai.llms.providers.openai.completion import OpenAICompletion
 from crewai.utilities.types import LLMMessage
 from dotenv import load_dotenv
@@ -15,11 +16,31 @@ from coder.model_config import MODEL_FALLBACKS, MODEL_MAX_OUTPUT_TOKENS, MODEL_T
 
 load_dotenv()
 
+OPENAI_INCOMPATIBLE_MESSAGE_FIELDS = {"raw_tool_call_parts"}
+
+
+def openai_compatible_messages(
+    messages: str | list[LLMMessage],
+) -> str | list[LLMMessage]:
+    """Remove native-provider metadata rejected by Groq and OpenRouter."""
+    if isinstance(messages, str):
+        return messages
+    return [
+        {
+            key: value
+            for key, value in message.items()
+            if key not in OPENAI_INCOMPATIBLE_MESSAGE_FIELDS
+        }
+        if isinstance(message, dict)
+        else message
+        for message in messages
+    ]  # type: ignore[return-value]
+
 
 class FallbackLLM(BaseLLM):
     """Retry a failed LLM call without restarting completed CrewAI work."""
 
-    attempts: list[tuple[ModelSpec, OpenAICompletion]] = Field(exclude=True)
+    attempts: list[tuple[ModelSpec, BaseLLM]] = Field(exclude=True)
     active_index: int = Field(default=0, exclude=True)
 
     def call(
@@ -40,8 +61,13 @@ class FallbackLLM(BaseLLM):
             label = f"{spec.label}/{spec.model}"
             print(f"[models] trying {label}", flush=True)
             try:
+                provider_messages = (
+                    messages
+                    if spec.label == "Gemini"
+                    else openai_compatible_messages(messages)
+                )
                 result = llm.call(
-                    messages=messages,
+                    messages=provider_messages,
                     tools=tools,
                     callbacks=callbacks,
                     available_functions=available_functions,
@@ -75,21 +101,30 @@ class FallbackLLM(BaseLLM):
 
 def fallback_llm() -> FallbackLLM:
     """Build the shared quality-first LLM used by the coding agent."""
-    attempts: list[tuple[ModelSpec, OpenAICompletion]] = []
+    attempts: list[tuple[ModelSpec, BaseLLM]] = []
     for spec in MODEL_FALLBACKS:
         credential = os.getenv(spec.api_key_env, "").strip()
         if not credential:
             continue
-        attempts.append((spec, OpenAICompletion(
-            model=spec.model,
-            api_key=credential,
-            base_url=spec.base_url,
-            provider="openai",
-            max_retries=0,
-            max_tokens=MODEL_MAX_OUTPUT_TOKENS,
-            timeout=MODEL_TIMEOUT_SECONDS,
-            temperature=0.2,
-        )))
+        if spec.label == "Gemini":
+            llm: BaseLLM = GeminiCompletion(
+                model=spec.model,
+                api_key=credential,
+                max_output_tokens=MODEL_MAX_OUTPUT_TOKENS,
+                timeout=MODEL_TIMEOUT_SECONDS,
+            )
+        else:
+            llm = OpenAICompletion(
+                model=spec.model,
+                api_key=credential,
+                base_url=spec.base_url,
+                provider="openai",
+                max_retries=0,
+                max_tokens=MODEL_MAX_OUTPUT_TOKENS,
+                timeout=MODEL_TIMEOUT_SECONDS,
+                temperature=0.2,
+            )
+        attempts.append((spec, llm))
     if not attempts:
         required = ", ".join(dict.fromkeys(spec.api_key_env for spec in MODEL_FALLBACKS))
         raise RuntimeError(f"Configure at least one provider key in .env: {required}")

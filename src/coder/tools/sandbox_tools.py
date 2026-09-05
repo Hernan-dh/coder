@@ -7,14 +7,19 @@ SANDBOX_DIR = Path(__file__).parents[3] / "sandbox"
 SANDBOX_DIR.mkdir(parents=True, exist_ok=True)
 
 @tool("List Sandbox Files")
-def list_sandbox_files() -> str:
+def list_sandbox_files(directory: str = ".") -> str:
     """
     List the filenames currently in the sandbox directory.
+
+    Args:
+        directory: Reserved for schema compatibility; use "." for the sandbox root.
 
     Returns:
         A newline-separated list of filenames, or a message if the
         sandbox is empty.
     """
+    if directory != ".":
+        return 'Only the sandbox root directory "." can be listed.'
     names = sorted(p.name for p in SANDBOX_DIR.iterdir())
     return "\n".join(names) if names else "The sandbox is empty."
 
