@@ -18,6 +18,12 @@ Next, navigate to your project directory and install the dependencies:
 ```bash
 crewai install
 ```
+
+Start Docker Desktop and pull the isolated Python runtime once:
+
+```bash
+docker pull python:3.13-slim
+```
 ### Customizing
 
 Copy `.env.example` to `.env` and configure at least one of
@@ -39,6 +45,8 @@ $ crewai run
 
 This command presents ten coding-project options plus a custom-assignment path,
 then initializes the coder Crew and passes your selection to `{assignment}`.
+Generated code is written under `sandbox/` and executed in an ephemeral,
+network-disabled Docker container with CPU, memory, process, and time limits.
 
 This example, unmodified, will run the create a `report.md` file with the output of a research on LLMs in the root folder.
 

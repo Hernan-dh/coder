@@ -21,6 +21,23 @@ CLI output is forced to UTF-8 on Windows so CrewAI status symbols do not trigger
 
 Generated files in `output/` and `sandbox*/` are local artifacts and are excluded from publication.
 
+## Docker sandbox
+
+Docker Desktop must be running with Linux containers enabled. The coder writes
+generated files under `sandbox/` and runs Python files in disposable
+`python:3.13-slim` containers. The runtime has no network, uses a read-only root
+filesystem, and is limited to one CPU, 256 MB RAM, 64 processes, and 60 seconds.
+
+Pull the runtime image once and run the local smoke test with:
+
+```powershell
+docker pull python:3.13-slim
+uv run python -m unittest discover -s tests
+```
+
+If a run fails, confirm `docker version` shows both Client and Server. Sandbox
+programs cannot download packages or contact external services by design.
+
 ## Verification
 
 Run `./scripts/verify.sh`, or on Windows run `uv run python scripts/verify.py`.

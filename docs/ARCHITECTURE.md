@@ -12,6 +12,8 @@
 - `src/coder/main.py`: command-line entry points and kickoff inputs.
 - `src/coder/model_config.py`: version-controlled Gemini, Groq, and OpenRouter fallback order.
 - `src/coder/model_provider.py`: per-call provider failover used by the CrewAI agent.
+- `src/coder/tools/sandbox_tools.py`: constrained file operations and ephemeral
+  Docker execution for generated Python programs.
 - `knowledge/`: versioned knowledge supplied to the crew.
 - `output/` and `sandbox*/`: generated execution artifacts excluded from Git.
 - `scripts/`: shared verification, documentation, hook installation, and safe publishing commands.
@@ -21,6 +23,10 @@
 - Prompts, model responses, tool results, generated code, and generated reports are untrusted.
 - Credentials are loaded from the environment and must not enter Git, prompts, logs, or documentation.
 - CrewAI model and tool providers are external services.
+- Generated Python executes in an ephemeral container with no network, a
+  read-only root filesystem, dropped Linux capabilities, and bounded CPU,
+  memory, process count, and execution time. Only `sandbox/` is bind-mounted
+  read-write; tool paths are resolved and checked against that boundary.
 
 ## Model routing
 

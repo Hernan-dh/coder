@@ -5,7 +5,12 @@ from unittest.mock import patch
 from coder.main import CODING_OPTIONS, prompt_assignment
 from coder.model_config import MODEL_FALLBACKS
 from coder.model_provider import fallback_llm, openai_compatible_messages
-from coder.tools.sandbox_tools import list_sandbox_files
+from coder.tools.sandbox_tools import (
+    list_sandbox_files,
+    read_sandbox_file,
+    run_sandbox_python,
+    write_sandbox_file,
+)
 
 
 class ModelProviderTests(unittest.TestCase):
@@ -55,6 +60,29 @@ class AssignmentPromptTests(unittest.TestCase):
     @patch("builtins.input", side_effect=["11", "0", "2"])
     def test_reprompts_after_invalid_number(self, _input):
         self.assertEqual(prompt_assignment(), CODING_OPTIONS[1])
+
+
+class SandboxToolTests(unittest.TestCase):
+    def test_rejects_paths_outside_sandbox(self):
+        self.assertIn("inside the sandbox", read_sandbox_file.run("../.env"))
+        self.assertIn("inside the sandbox", write_sandbox_file.run("../escape.py", ""))
+        self.assertIn("inside the sandbox", run_sandbox_python.run("../escape.py"))
+
+    @patch("coder.tools.sandbox_tools.subprocess.run")
+    def test_runs_python_with_docker_isolation(self, run):
+        write_sandbox_file.run("test_script.py", "print('ok')")
+        run.return_value.returncode = 0
+        run.return_value.stdout = "ok\n"
+        run.return_value.stderr = ""
+
+        result = run_sandbox_python.run("test_script.py")
+
+        command = run.call_args.args[0]
+        self.assertIn("none", command)
+        self.assertIn("256m", command)
+        self.assertIn("no-new-privileges", command)
+        self.assertIn("--read-only", command)
+        self.assertEqual(result, "Exit code: 0\nok")
 
 
 if __name__ == "__main__":
