@@ -2,6 +2,7 @@ from crewai import Agent, Crew, Process, Task
 from crewai.project import CrewBase, agent, crew, task
 from crewai.agents.agent_builder.base_agent import BaseAgent
 from .tools.sandbox_tools import sandbox_tools
+from .tools.web_search_tool import WebSearchTool
 # If you want to run a snippet of code before or after the crew starts,
 # you can use the @before_kickoff and @after_kickoff decorators
 # https://docs.crewai.com/concepts/crews#example-crew-class-with-decorators
@@ -26,7 +27,7 @@ class Coder:
             config=self.agents_config['coder'],  # type: ignore[index]
             llm=self.llm,
             verbose=True,
-            tools=sandbox_tools,
+            tools=[*sandbox_tools, WebSearchTool()],
             # FallbackLLM already tries every provider for each failed call.
             # Retrying the whole task would repeat the chain and waste free quota.
             max_retry_limit=0,

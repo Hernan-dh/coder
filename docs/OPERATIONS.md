@@ -21,6 +21,10 @@ Gemini 3 tool calls require thought signatures to be retained across turns.
 CLI output is forced to UTF-8 on Windows so CrewAI status symbols do not trigger
 `charmap` encoding errors.
 
+`SERPER_API_KEY` is optional. The coding agent uses Serper for current
+documentation when configured, and DDGS otherwise. The generated program
+still runs in the network-disabled Docker sandbox.
+
 Generated files in `output/` and `sandbox*/` are local artifacts and are excluded from publication.
 
 ## Docker sandbox

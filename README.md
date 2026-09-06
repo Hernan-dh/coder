@@ -16,7 +16,7 @@ uv sync
 
 Copy `.env.example` to `.env` (`Copy-Item .env.example .env` in PowerShell, or `cp .env.example .env` on Linux/macOS), then replace only the placeholders for the providers you intend to use. Leave unused credentials empty. Never commit the real `.env`.
 
-Configure at least one model-provider key. Install and start Docker, then run `docker pull python:3.13-slim`. Select a preset or custom assignment in the CLI; existing sessions can be resumed.
+Configure at least one model-provider key. `SERPER_API_KEY` is optional for current web documentation; DDGS is used when it is empty. Install and start Docker, then run `docker pull python:3.13-slim`. Select a preset or custom assignment in the CLI; existing sessions can be resumed.
 
 ```sh
 uv run crewai run
@@ -25,7 +25,7 @@ uv run crewai run
 ## Architecture
 
 ```text
-CLI assignment -> CrewAI coding agent -> constrained file tools -> network-disabled Docker -> results / resumable session
+CLI assignment -> CrewAI coding agent -> sandbox tools + optional web search -> network-disabled Docker -> results / resumable session
 ```
 
 See [architecture](docs/ARCHITECTURE.md) for components, data flow and trust boundaries, and [operations](docs/OPERATIONS.md) for configuration and recovery.
