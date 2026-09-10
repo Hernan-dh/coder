@@ -2,10 +2,6 @@
 
 A command-line coding assistant that turns a requested Python program into files, runs them in a constrained Docker workspace, and can resume an interrupted assignment.
 
-## Attribution
-
-Project built from [Ed Donner's agentic AI engineering course](https://github.com/ed-donner/agents). The upstream MIT copyright notice is preserved in [LICENSE](LICENSE). No endorsement by the course author is implied.
-
 ## Run locally
 
 Python 3.12 and uv are the documented development baseline. Docker is required for actual code generation, but not for unit tests. Run the following commands from this repository's root.
