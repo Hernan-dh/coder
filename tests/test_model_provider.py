@@ -28,6 +28,9 @@ class ModelProviderTests(unittest.TestCase):
     def test_requires_at_least_one_key(self):
         with patch.dict(os.environ, {
             "GEMINI_API_KEY": "",
+            "GEMINI_API_KEY_2": "",
+            "GEMINI_API_KEY_3": "",
+            "GEMINI_API_KEY_4": "",
             "GROQ_API_KEY": "",
             "OPENROUTER_API_KEY": "",
         }, clear=False):

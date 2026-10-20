@@ -68,6 +68,10 @@ Enable the repository-managed pre-commit hook once per clone with `uv run python
 
 ## Publishing
 
+Runtime agents and commit metadata generation rotate through `GEMINI_API_KEY`,
+`GEMINI_API_KEY_2`, `GEMINI_API_KEY_3`, and `GEMINI_API_KEY_4` before the
+configured Groq and OpenRouter fallbacks.
+
 Preview a proposal with `uv run python scripts/publish.py --preview`. Interactive publication verifies the repository, proposes an English Conventional Commit title through Gemini with Groq fallback, and requires typing `PUBLISH` before staging, committing, and pushing.
 
 Provide `--title` and `--description` to avoid external metadata generation. Commits and pushes always require explicit user authorization.
