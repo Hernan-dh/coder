@@ -25,6 +25,10 @@ CLI output is forced to UTF-8 on Windows so CrewAI status symbols do not trigger
 documentation when configured, and DDGS otherwise. The generated program
 still runs in the network-disabled Docker sandbox.
 
+## Phoenix tracing
+
+Tracing is opt-in. Set `PHOENIX_COLLECTOR_ENDPOINT` to a Phoenix OTLP endpoint and, when required, `PHOENIX_API_KEY`. The entry point instruments CrewAI through OpenInference; leaving the endpoint unset sends no traces.
+
 Generated files in `output/` and `sandbox*/` are local artifacts and are excluded from publication.
 
 ## Docker sandbox

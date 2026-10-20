@@ -4,6 +4,7 @@ import warnings
 
 from datetime import datetime
 
+from coder.observability import configure_observability
 from coder.crew import Coder
 from coder.model_provider import fallback_llm
 from coder.session import (
@@ -16,6 +17,8 @@ from coder.session import (
 )
 
 warnings.filterwarnings("ignore", category=SyntaxWarning, module="pysbd")
+
+configure_observability()
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
